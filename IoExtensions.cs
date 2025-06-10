@@ -5,6 +5,8 @@ namespace Utils;
 
 public static class IoExtensions
 {
+    private const int INDENT = 25;
+
     [Pure] public static bool WriteTo(this string text, string path)
     {
         using (var writer = new StreamWriter(path))
@@ -34,7 +36,7 @@ public static class IoExtensions
 
     public static void LogStep(this object o, string step)
     {
-        Console.Write($"{Ansi.WrapBlue(step),20}");
+        Console.Write($"{Ansi.WrapBlue(step),INDENT}");
         Console.WriteLine(" " + o);
     
         Console.ResetColor();
@@ -47,7 +49,7 @@ public static class IoExtensions
 
     public static void Log(this object o, params object[] args)
     {
-        foreach (var arg in args) Console.Write($"{arg,20}");
+        foreach (var arg in args) Console.Write($"{arg,INDENT}");
         Console.WriteLine(" " + o);
     
         Console.ResetColor();

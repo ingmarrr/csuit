@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -19,23 +20,24 @@ public sealed record Flag(string Name) : ParseResult
 
 public sealed record ArgumentString(string Name, string Value) : ParseResult
 {
-    public override string ToString() => $"string argument '{Name} = {Value}'";
+    public override string ToString() => $"string '{Name} = {Value}'";
 }
 
 public sealed record ArgumentList(string Name, List<string> Values) : ParseResult
 {
-    public override string ToString() => $"argument list '{Name} = [{string.Join(", ", Values)}]'";
+    public override string ToString() => $"list '{Name} = [{string.Join(", ", Values)}]'";
 }
 
 public sealed record ArgumentInt(string Name, int Value) : ParseResult
 {
-    public override string ToString() => $"int argument '{Name} = {Value}'";
+    public override string ToString() => $"int '{Name} = {Value}'";
 }
 
-public sealed record Cmd(string Name) : ParseResult
+public sealed record Raw(string Name) : ParseResult
 {
-    public override string ToString() => $"command '{Name}'";
+    public override string ToString() => $"'{Name}'";
 }
+
 
 public abstract record Maybe
 {
@@ -46,7 +48,7 @@ public abstract record Maybe
     ) => new(longName, shortName, kind);
     // public static MaybeArgumentList ArgumentList(string? longName = null, string? shortName = null) => new(longName, shortName);
     public static MaybeFlag Flag(string? name = null) => new(name);
-    public static MaybeCommand Command(string? name = null) => new(name);
+    public static MaybeRaw Command(string? name = null) => new(name);
 
     public abstract bool Is(ParseResult? other);
 }
@@ -66,16 +68,16 @@ public sealed record MaybeArgument(
     public override string ToString() => LongName is not null
         ? ShortName is not null
             ? $"(-{LongName} | -{ShortName}) <arg>"
-            : $"-{LongName} <arg>"
+            : $"-{LongName} <arg:{ArgumentKind}>"
         : ShortName is not null
-            ? $"-{ShortName} <arg>"
-            :"-<any> <arg>";
+            ? $"-{ShortName} <arg:{ArgumentKind}>"
+            : $"<arg:{ArgumentKind}>";
 
     public override bool Is(ParseResult? other)
     {
         if (other is ArgumentString argString)
         {
-            return ArgumentKind is ArgumentKind.String or ArgumentKind.List
+            return ArgumentKind is ArgumentKind.String
                && ((LongName is null && ShortName is null)
                    || ShortName == argString.Name 
                    || LongName == argString.Name);
@@ -97,7 +99,7 @@ public sealed record MaybeArgument(
                    || LongName == argInt.Name);
         }
 
-        return false;
+        return ArgumentKind is ArgumentKind.String && other is Raw;
     }
 }
 
@@ -111,13 +113,13 @@ public sealed record MaybeFlag(string? Name) : Maybe
     }
 }
 
-public sealed record MaybeCommand(string? Name) : Maybe
+public sealed record MaybeRaw(string? Name) : Maybe
 {
     public override string ToString() => $"{Name}";
 
     public override bool Is(ParseResult? other)
     {
-        return other is Cmd cmd && (Name is null || Name == cmd.Name);
+        return other is Raw cmd && (Name is null || Name == cmd.Name);
     }
 }
 
@@ -219,7 +221,7 @@ public sealed class Parser(string[] args, string? usage = null)
                 return new ArgumentString(name, value.Trim().Trim('"'));
             }
 
-            return new Cmd(next);
+            return new Raw(next);
         }
 
         return null;
@@ -247,7 +249,7 @@ public sealed class Parser(string[] args, string? usage = null)
             ArgumentString arg when set.Has(arg) => arg,
             ArgumentList list when set.Has(list) => list,
             ArgumentInt intArg when set.Has(intArg) => intArg,
-            Cmd cmd when set.Has(cmd) => cmd,
+            Raw cmd when set.Has(cmd) => cmd,
             _ => null,
         };
         if (result is null)
@@ -275,11 +277,11 @@ public sealed class Parser(string[] args, string? usage = null)
     /// As mentioned above, this expect adds a type conversion operation.
     /// So instead of this
     ///
-    /// <code>var cmd = (Cmd) Parser.Expect(Maybe.Command("run"));</code>
+    /// <code>var cmd = (Cmd) Parser.Expect(Maybe.Raw("run"));</code>
     ///
     /// we can do
     ///
-    /// <code>var cmd = Parser.Expect&lt;Cmd&gt;(Maybe.Command("run"));</code>
+    /// <code>var cmd = Parser.Expect&lt;Cmd&gt;(Maybe.Raw("run"));</code>
     /// 
     /// If that operation fails, it is because programmer tried to convert the
     /// result to an invalid one. The only difference between the two is, that
@@ -329,7 +331,7 @@ public sealed class Parser(string[] args, string? usage = null)
             ArgumentString arg when set.Has(arg) => arg,
             ArgumentList list when set.Has(list) => list,
             ArgumentInt intArg when set.Has(intArg) => intArg,
-            Cmd cmd when set.Has(cmd) => cmd,
+            Raw cmd when set.Has(cmd) => cmd,
             _ => null,
         };
         if (result is null) Back();
@@ -367,7 +369,7 @@ public sealed class Parser(string[] args, string? usage = null)
                 ArgumentString arg when maybe.Is(arg) => arg,
                 ArgumentList list when maybe.Is(list) => list,
                 ArgumentInt intArg when maybe.Is(intArg) => intArg,
-                Cmd cmd when maybe.Is(cmd) => cmd,
+                Raw cmd when maybe.Is(cmd) => cmd,
                 _ => null,
             };
 
@@ -399,7 +401,7 @@ public sealed class Parser(string[] args, string? usage = null)
         return null;
     }
 
-    public string? Argument(string longName, string? shortName)
+    public string? Argument(string? longName, string? shortName)
     {
         var checkpoint = Index;
         if (TryNext() is { } possibleArg && possibleArg.StartsWith('-'))
