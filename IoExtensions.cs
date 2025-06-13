@@ -63,6 +63,14 @@ public static class IoExtensions
         }
     }
 
+    public static void LogEach<T>(this IEnumerator<T> items, params object[] args)
+    {
+        while (items.MoveNext())
+        {
+            items.Current?.Log(args);
+        }
+    }    
+    
     public static void PrintNextLine(this object o, params object[] args)
     {
         var caller = new CallerInfo(new StackFrame(1, true));

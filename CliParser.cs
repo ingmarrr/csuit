@@ -308,7 +308,7 @@ public sealed class Parser(string[] args, string? usage = null)
         if (result is not T)
         {
             "faulty parser, tried parsing an possibility into invalid type.".Log(Ansi.WrapRed("error"));
-            $"{nameof(T)}, {Ansi.WrapRed("found")} {result.GetType().Name}".Log(Ansi.WrapRed("expected"));
+            $"{typeof(T)}, {Ansi.WrapRed("found")} {result.GetType().Name}".Log(Ansi.WrapRed("expected"));
             Environment.Exit(1);
         }
     
@@ -401,10 +401,11 @@ public sealed class Parser(string[] args, string? usage = null)
         return null;
     }
 
-    public string? Argument(string? longName, string? shortName)
+    public string? Argument(string? longName = null, string? shortName = null)
     {
         var checkpoint = Index;
-        if (TryNext() is { } possibleArg && possibleArg.StartsWith('-'))
+        var next = TryNext();
+        if (next is { } possibleArg && (possibleArg.StartsWith('-') || (longName == null && shortName == null)))
         {
             var name = possibleArg.TrimStart('-');
             var value = TryNext();
