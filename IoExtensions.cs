@@ -24,13 +24,30 @@ public static class IoExtensions
         }
         catch (ObjectDisposedException)
         {
-            "output stream closed".Log(Ansi.WrapRed("error"));
+            "output stream closed".LogErr();
             return false;
         }
         catch (IOException)
         {
-            "io exception occured".Log(Ansi.WrapRed("error"));
+            "io exception occured".LogErr();
             return false;
+        }
+    }
+
+    [Pure]
+    public static string ReadToEnd(this string path)
+    {
+        try
+        {
+            using (var reader = new StreamReader(path))
+            {
+                return reader.ReadToEnd();
+            }
+        }
+        catch (Exception)
+        {
+            $"failed reading file: {Path.GetFullPath(path)}".LogErr();
+            throw;
         }
     }
 

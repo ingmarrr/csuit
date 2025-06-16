@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Utils;
@@ -44,11 +42,12 @@ public abstract record Maybe
     public static MaybeArgument Argument(
         string? longName = null,
         string? shortName = null,
-        ArgumentKind kind = ArgumentKind.String
-    ) => new(longName, shortName, kind);
-    // public static MaybeArgumentList ArgumentList(string? longName = null, string? shortName = null) => new(longName, shortName);
-    public static MaybeFlag Flag(string? name = null) => new(name);
-    public static MaybeRaw Command(string? name = null) => new(name);
+        ArgumentKind kind = ArgumentKind.String,
+        string description = "Arg"
+    ) => new(longName, shortName, kind, description);
+    
+    public static MaybeFlag Flag(string? name = null, string description = "Flag") => new(name, description);
+    public static MaybeRaw Raw(string? name = null, string description = "Raw") => new(name, description);
 
     public abstract bool Is(ParseResult? other);
 }
@@ -63,15 +62,16 @@ public enum ArgumentKind
 public sealed record MaybeArgument(
     string? LongName, 
     string? ShortName,
-    ArgumentKind ArgumentKind) : Maybe
+    ArgumentKind ArgumentKind,
+    string Description) : Maybe
 {
     public override string ToString() => LongName is not null
         ? ShortName is not null
-            ? $"(-{LongName} | -{ShortName}) <arg>"
-            : $"-{LongName} <arg:{ArgumentKind}>"
+            ? $"<--{LongName}:-{ShortName}:{ArgumentKind}:{Description}>"
+            : $"<--{LongName}:{ArgumentKind}:{Description}>"
         : ShortName is not null
-            ? $"-{ShortName} <arg:{ArgumentKind}>"
-            : $"<arg:{ArgumentKind}>";
+            ? $"<-{ShortName}:{ArgumentKind}:{Description}>"
+            : $"<{ArgumentKind}:{Description}>";
 
     public override bool Is(ParseResult? other)
     {
@@ -103,9 +103,9 @@ public sealed record MaybeArgument(
     }
 }
 
-public sealed record MaybeFlag(string? Name) : Maybe
+public sealed record MaybeFlag(string? Name, string Description) : Maybe
 {
-    public override string ToString() => $"--{Name}";
+    public override string ToString() => $"<--{Name}:{Description}>";
 
     public override bool Is(ParseResult? other)
     {
@@ -113,9 +113,9 @@ public sealed record MaybeFlag(string? Name) : Maybe
     }
 }
 
-public sealed record MaybeRaw(string? Name) : Maybe
+public sealed record MaybeRaw(string? Name, string Description) : Maybe
 {
-    public override string ToString() => $"{Name}";
+    public override string ToString() => $"<{Name}:{Description}>";
 
     public override bool Is(ParseResult? other)
     {
